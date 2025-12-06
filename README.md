@@ -53,7 +53,7 @@ Automatically classify incoming leads as **high**, **medium**, or **low** priori
 
 ---
 
-## 📌 2. In Development — AI Ticket Intake
+## 📌 2. AI Ticket Intake
 
 ### 🎯 Objective
 Automatically classify, summarize, and generate an initial response for support tickets sent through a webhook — with strict validation, retries, and structured output suitable for internal workflows.
@@ -91,6 +91,8 @@ Automatically classify, summarize, and generate an initial response for support 
 
 ### 🧾 Exported JSON
 [AI Ticket Intake Workflow.json](workflows/AI%20Ticket%20Intake%20Workflow.json)
+
+---
 
 ## 📌 3. Revenue Ops Automation
 
@@ -133,6 +135,8 @@ Automate the intake and processing of deals using AI, ensuring **data validation
 
 ### 🧾 Exported JSON
 [Revenue Ops Automation Workflow.json](workflows/Revenue%20Ops%20Automation%20Workflow.json)
+
+---
 
 ## 📌 4. Governance & Cost Control Automation
 
@@ -190,6 +194,79 @@ This combines governance, observability, compliance, and FinOps — exactly what
 
 ### 🔗 Link to Kotlin Project
 [Kotlin Project](https://github.com/gestevao04/governance-backend)
+
+---
+
+## 📌 5. Intelligent Email Classifier & Prioritizer
+
+### 🎯 Objective
+Automate the sorting, classification, and prioritization of incoming emails, reducing manual effort and ensuring that important messages receive immediate attention.
+The workflow automatically identifies the category of each email, assesses urgency, applies the correct label in Gmail, and logs everything in a spreadsheet for auditing.
+In addition, the automation creates non-existent labels and maintains an organized and traceable history.
+
+---
+
+### 🧩 Technologies
+- n8n
+- Google Gmail API
+- Gemini 2.0 Flash
+- Google Sheets API
+- JavaScript Expressions
+- OAuth 2.0 (Google)
+- Telegram
+- PostgreSQL
+
+---
+
+### 🖼 Screenshots
+---
+![workflow-5-img1.png](screenshots/email-ai/img1.png)
+![workflow-5-img2.png](screenshots/email-ai/img2.png)
+![workflow-5-img3.png](screenshots/email-ai/img3.png)
+
+---
+### 🧠 Technical Explanation
+The flow is triggered by a **Gmail Trigger**, which captures recently received unread emails.  
+Each message moves through the following pipeline:
+
+1. **Email Retrieval**  
+   n8n extracts the sender, subject, and full body of the email.
+
+2. **AI Classification**  
+   The email content is sent to the **Gemini Flash 2.0** model, which returns a JSON containing:
+  - suggested category
+  - urgency (low, medium, high)
+  - one-paragraph summary
+  - confidence score
+
+3. **Mapping and Normalization**  
+   The fields returned by the AI are structured and prepared for the next workflow steps.
+
+4. **Label Verification**  
+   The flow compares the suggested category against existing Gmail labels:
+  - If the label exists → proceed
+  - If it does not exist → a new label is automatically created
+
+5. **Label Assignment**  
+   The message receives its categorized label, keeping the inbox consistently organized.
+
+6. **Google Sheets Logging**  
+   All processed information is recorded in a spreadsheet including:
+  - date
+  - from
+  - subject
+  - category
+  - urgency
+  - summary
+  - confidence
+
+   This acts as an **auditable history** and also enables external dashboards.
+
+The result is an autonomous system capable of intelligently and consistently organizing and prioritizing your inbox.
+
+---
+### 🧾 Exported JSON
+[Intelligent Email Classifier & Prioritizer Workflow.json](workflows/Intelligent%20Email%20Classifier%20%26%20Prioritizer%20Workflow.json)
 
 ---
 ## 📎 Contact

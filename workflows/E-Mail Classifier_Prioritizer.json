@@ -1,0 +1,986 @@
+{
+  "name": "E-Mail Classifier/Prioritizer",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "readStatus": "unread"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -656,
+        -192
+      ],
+      "id": "1d4e38a9-aa3d-441c-9a0c-2bd2f8a6247c",
+      "name": "Gmail Trigger",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6ULppEjljfFwcPWR",
+          "name": "Gest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.0-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.0-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Você é um Agente Classificador de E-Mail.\n\nRetorne um JSON *valido* no seguinte formato:\n{\n  \"categoria\": \"<label>\",\n  \"urgencia\": \"<baixa|media|alta|urgente>\",\n  \"resumo\": \"<3-4 linhas explicando o email>\",\n  \"confianca_resposta\": \"<valor de 0-100 com o grau de confiança em sua resposta>\"\n}\n\nSe não puder classificar o e-mail, retorne:\n{ \"error\": \"error reason\" }\n\nEmail:\n  Remetente: {{ $('Gmail Trigger').item.json.headers.from }}\n  Assunto: {{ $('Gmail Trigger').item.json.subject }}\n  Corpo: {{ $('Gmail Trigger').item.json.text }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -304,
+        -192
+      ],
+      "id": "adcc8c93-6da6-4682-915d-b9ad61f16734",
+      "name": "E-Mail Classifier Agent",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "v5gGBxIpmyPrzosp",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "aa9f514a-f620-49d9-b71c-0d15d7ef230c",
+              "name": "categoria",
+              "value": "={{ $json.content.parts[0].text.parseJson().categoria }}",
+              "type": "string"
+            },
+            {
+              "id": "627d9def-ccdf-4eaa-82d9-cf002968c561",
+              "name": "urgencia",
+              "value": "={{ $json.content.parts[0].text.parseJson().urgencia }}",
+              "type": "string"
+            },
+            {
+              "id": "9f96f0de-2fe5-48bc-af26-54a2da1f403d",
+              "name": "resumo",
+              "value": "={{ $json.content.parts[0].text.parseJson().resumo }}",
+              "type": "string"
+            },
+            {
+              "id": "79c8402c-303c-42c4-9ac3-80d74417ad49",
+              "name": "confianca_resposta",
+              "value": "={{ $json.content.parts[0].text.parseJson().confianca_resposta }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        0,
+        -192
+      ],
+      "id": "e865ca02-f254-493e-abb6-04366336caeb",
+      "name": "Map Fields"
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        192,
+        -192
+      ],
+      "id": "aa7d0e55-d97d-4705-a167-373b9753acd0",
+      "name": "Get E-Mail Labels",
+      "webhookId": "50ee3361-a572-4dcf-bbf2-b39c21a22c38",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6ULppEjljfFwcPWR",
+          "name": "Gest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        384,
+        -192
+      ],
+      "id": "c831a379-dfa7-4f84-82d2-e733937d4afe",
+      "name": "Unify Labels"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3d91434d-652b-4271-bd3a-18a8feb06edd",
+              "leftValue": "={{ $json.data.some(d => d.name === $('Map Fields').item.json.categoria) }}",
+              "rightValue": "={{ $('Map Fields').item.json.categoria }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        -192
+      ],
+      "id": "d7b9eacb-8a49-4111-a35a-d5acf544fd46",
+      "name": "Is New Label?"
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "operation": "create",
+        "name": "={{ $('Map Fields').item.json.categoria }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        736,
+        -288
+      ],
+      "id": "14de5955-ab6d-4594-aefb-91ddc9ac0e78",
+      "name": "Create Label",
+      "webhookId": "e3173417-4dcd-4605-8e41-7c7ed671f9dc",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6ULppEjljfFwcPWR",
+          "name": "Gest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "label",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        912,
+        -288
+      ],
+      "id": "73d66949-f869-4e59-921e-9fe5a754ceee",
+      "name": "Get All Labels",
+      "webhookId": "bc2941d8-e568-4872-b189-de1f69e16811",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6ULppEjljfFwcPWR",
+          "name": "Gest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        -288
+      ],
+      "id": "94cde826-7638-40f4-8505-96a16a3c549c",
+      "name": "Unify Labels With Aggregate"
+    },
+    {
+      "parameters": {
+        "operation": "addLabels",
+        "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+        "labelIds": "={{ $if( $('Unify Labels With Aggregate').isExecuted, $('Unify Labels With Aggregate').item.json.data.find(d => d.name === $('Map Fields').item.json.categoria).id, $('Unify Labels').item.json.data.find(d => d.name === $('Map Fields').item.json.categoria).id) }}"
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1328,
+        -176
+      ],
+      "id": "7e571328-873c-4d9b-97ac-45d0b7420257",
+      "name": "Set Label to E-Mail",
+      "webhookId": "e4e74c73-f1c7-4895-9cbe-b93b3c3ead5b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "6ULppEjljfFwcPWR",
+          "name": "Gest"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1CSfYAEg2Q5ijNBP0Sirkmlvkff4Bxau53rPOWF4WJ1k",
+          "mode": "list",
+          "cachedResultName": "Roteador & Priorizador Inteligente de Email",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1CSfYAEg2Q5ijNBP0Sirkmlvkff4Bxau53rPOWF4WJ1k/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Página1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1CSfYAEg2Q5ijNBP0Sirkmlvkff4Bxau53rPOWF4WJ1k/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Data": "={{ new Date($('Gmail Trigger').item.json.date).toLocaleString('pt-BR') }}",
+            "De": "={{ $('Gmail Trigger').item.json.from.text }}",
+            "Assunto": "={{ $('Gmail Trigger').item.json.subject }}",
+            "Categoria": "={{ $('Map Fields').item.json.categoria }}",
+            "Urgencia": "={{ $('Map Fields').item.json.urgencia }}",
+            "Certeza IA": "={{ $('Map Fields').item.json.confianca_resposta }}%",
+            "Resumo": "={{ $('Map Fields').item.json.resumo }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Data",
+              "displayName": "Data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "De",
+              "displayName": "De",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Assunto",
+              "displayName": "Assunto",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Resumo",
+              "displayName": "Resumo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Categoria",
+              "displayName": "Categoria",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Urgencia",
+              "displayName": "Urgencia",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Certeza IA",
+              "displayName": "Certeza IA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1504,
+        -176
+      ],
+      "id": "3486db69-109f-4968-9317-96408c17784a",
+      "name": "Add Information to Excel",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "wHvqestlSi0ivPBv",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Urgencia }}",
+                    "rightValue": "alta",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c5e01d21-7a76-4631-a360-adf9284d889e"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ab21eb32-984d-4eab-a543-8144599375b8",
+                    "leftValue": "={{ $json.Urgencia }}",
+                    "rightValue": "urgente",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        1696,
+        -176
+      ],
+      "id": "472b70f2-a055-4cb8-9ff0-18921ee7764c",
+      "name": "Filter Urgent E-Mails"
+    },
+    {
+      "parameters": {
+        "chatId": "8143224507",
+        "text": "=📨 Novo e-mail de pioridade alta/urgente!\n\n📌 Assunto: {{ $('Gmail Trigger').item.json.subject }}\n👤 De: {{ $('Gmail Trigger').item.json.from.text }}\n📝 Resumo: {{ $('Map Fields').item.json.resumo }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1888,
+        -176
+      ],
+      "id": "c7e552ad-b2ae-4367-bcac-677d6ecac088",
+      "name": "Notify Via Telegram",
+      "webhookId": "216e8fe2-40cd-4c5a-836a-6fabe434184a",
+      "credentials": {
+        "telegramApi": {
+          "id": "QuC0UrKDCtxf6ptJ",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## New E-Mail",
+        "height": 208,
+        "width": 336
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -688,
+        -240
+      ],
+      "typeVersion": 1,
+      "id": "6904f1cb-1df3-4eb6-8a43-2d79a472e6f8",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## LLM E-Mail Classifier and Summarizer",
+        "height": 272,
+        "width": 832,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -320,
+        -272
+      ],
+      "typeVersion": 1,
+      "id": "59c96813-3d2e-48f9-a2b4-fb30c14f9953",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Creating E-Mail Label if Category labeled by LLM does not exist",
+        "height": 352,
+        "width": 736,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        544,
+        -352
+      ],
+      "typeVersion": 1,
+      "id": "23333889-2ad3-4584-9b4a-e4841bde997d",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## E-Mail is Labeled, excecutionsaved in Excel and Telegram Message triggers on Urgent/High priority",
+        "height": 272,
+        "width": 816,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1296,
+        -272
+      ],
+      "typeVersion": 1,
+      "id": "e85aa335-1764-4baa-9105-03ef88cf3b9f",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f20d6a90-17fd-4180-a9d6-d3f9d6b59d87",
+              "name": "request_id",
+              "value": "={{ $('UUID Generator').item.json.request_id }}",
+              "type": "string"
+            },
+            {
+              "id": "8fafa547-6e07-4bad-8c23-79b4db2a280a",
+              "name": "workflow",
+              "value": "Revenue Ops Automation",
+              "type": "string"
+            },
+            {
+              "id": "a7da5d7f-0113-4166-93cc-1f95730e3b8c",
+              "name": "node",
+              "value": "={{ $prevNode.name }}",
+              "type": "string"
+            },
+            {
+              "id": "2a4e4520-b8a1-4d46-bbde-cce9e7c20e2e",
+              "name": "input",
+              "value": "={{ $('Gmail Trigger').item }}",
+              "type": "string"
+            },
+            {
+              "id": "9ff06083-a1fd-46cd-b554-dbc38214d28e",
+              "name": "output",
+              "value": "={{ $input }}",
+              "type": "string"
+            },
+            {
+              "id": "05062530-4537-4d6c-9ecd-8f0ad4b83ad9",
+              "name": "success",
+              "value": "=true",
+              "type": "string"
+            },
+            {
+              "id": "46a809e3-dd81-4aee-8468-b77c2f84112e",
+              "name": "error_message",
+              "value": "=null",
+              "type": "string"
+            },
+            {
+              "id": "477e868f-7662-44ca-8846-23602851d4bf",
+              "name": "retry_count",
+              "value": "=0",
+              "type": "string"
+            },
+            {
+              "id": "0a0dfcf5-2eb0-4eaa-83d7-2e42870dee9f",
+              "name": "duration_ms",
+              "value": "={{ $now - $('UUID Generator').item.json.started_at }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1072,
+        336
+      ],
+      "id": "cc6a86ba-1222-4c99-8344-317a273e9b37",
+      "name": "Log Mapping"
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "automation_logs",
+          "mode": "list",
+          "cachedResultName": "automation_logs"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "success": false
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "request_id",
+              "displayName": "request_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "workflow",
+              "displayName": "workflow",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "node",
+              "displayName": "node",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phase",
+              "displayName": "phase",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "input",
+              "displayName": "input",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "output",
+              "displayName": "output",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "success",
+              "displayName": "success",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "boolean",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_message",
+              "displayName": "error_message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "retry_count",
+              "displayName": "retry_count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "duration_ms",
+              "displayName": "duration_ms",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1296,
+        336
+      ],
+      "id": "767c0ebc-5f0d-40f7-a5c5-f3071fff9624",
+      "name": "Log",
+      "credentials": {
+        "postgres": {
+          "id": "LFNBaOAiASwFN8AQ",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Logging",
+        "height": 224,
+        "width": 464,
+        "color": 2
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1024,
+        256
+      ],
+      "typeVersion": 1,
+      "id": "3a9fc8c3-df74-4fcc-ad46-b109b541d0af",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { randomUUID } = require('crypto');\n\nreturn {\n      request_id: randomUUID(),\n      started_at: Date.now()\n    };\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        -192
+      ],
+      "id": "c7690651-b95b-43e1-af0f-6a967641e148",
+      "name": "UUID Generator"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "UUID Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "E-Mail Classifier Agent": {
+      "main": [
+        [
+          {
+            "node": "Map Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map Fields": {
+      "main": [
+        [
+          {
+            "node": "Get E-Mail Labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get E-Mail Labels": {
+      "main": [
+        [
+          {
+            "node": "Unify Labels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unify Labels": {
+      "main": [
+        [
+          {
+            "node": "Is New Label?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is New Label?": {
+      "main": [
+        [
+          {
+            "node": "Create Label",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Label to E-Mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Label": {
+      "main": [
+        [
+          {
+            "node": "Get All Labels",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Labels": {
+      "main": [
+        [
+          {
+            "node": "Unify Labels With Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unify Labels With Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Set Label to E-Mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Label to E-Mail": {
+      "main": [
+        [
+          {
+            "node": "Add Information to Excel",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Information to Excel": {
+      "main": [
+        [
+          {
+            "node": "Filter Urgent E-Mails",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Urgent E-Mails": {
+      "main": [
+        [
+          {
+            "node": "Notify Via Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Via Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Mapping": {
+      "main": [
+        [
+          {
+            "node": "Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Via Telegram": {
+      "main": [
+        [
+          {
+            "node": "Log Mapping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UUID Generator": {
+      "main": [
+        [
+          {
+            "node": "E-Mail Classifier Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "versionId": "30c34d0a-1d93-4d68-9b8b-0be7b3305a56",
+  "meta": {
+    "instanceId": "85f422af6f53507a661294ac9af8ad9c2aca3724b7b8e7bed2fde7df8bd517bf"
+  },
+  "id": "NmbQ86UNz4G0Hk5M",
+  "tags": []
+}

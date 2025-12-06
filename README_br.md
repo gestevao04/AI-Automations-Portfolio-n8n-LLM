@@ -193,9 +193,78 @@ Isso combina governança, observabilidade, conformidade e FinOps — exatamente 
 ### 🔗 Link para o Projeto Kotlin
 [Kotlin Project](https://github.com/gestevao04/governance-backend)
 
+## 📌 5. Classificador & Priorizador Inteligente de E-mail
+
+### 🎯 Objetivo
+Automatizar a triagem, classificação e priorização de e-mails recebidos, reduzindo esforço manual e garantindo que mensagens importantes recebam atenção imediata.  
+O fluxo identifica automaticamente a categoria de cada e-mail, avalia urgência, aplica a label correta no Gmail e registra tudo em uma planilha para auditoria.  
+Além disso, a automação cria labels inexistentes e mantém um histórico organizado e rastreável.
+
+---
+### 🧩 Tecnologias
+- n8n
+- Google Gmail API
+- Gemini 2.0 Flash
+- Google Sheets API
+- JavaScript Expressions
+- OAuth 2.0 (Google)
+- Telegram
+- PostgreSQL
+
+---
+### 🖼 Screenshots
+![workflow-5-img1.png](screenshots/email-ai/img1.png)
+![workflow-5-img2.png](screenshots/email-ai/img2.png)
+![workflow-5-img3.png](screenshots/email-ai/img3.png)
+
+---
+
+### 🧠 Explicação Técnica
+
+O fluxo é desencadeado por um **Gmail Trigger**, que captura e-mails não lidos recebidos recentemente.  
+Cada mensagem segue o pipeline:
+
+1. **Leitura do e-mail**  
+   O n8n obtém remetente, assunto e corpo completo da mensagem.
+
+2. **Classificação via IA**  
+   O conteúdo é enviado ao modelo **Gemini Flash 2.0**, que retorna um JSON com:
+    - categoria sugerida
+    - urgência (baixa, média, alta)
+    - resumo em 1 parágrafo
+    - grau de confiança
+
+3. **Mapeamento e Normalização**  
+   Os campos retornados pela IA são organizados e preparados para os próximos passos.
+
+4. **Verificação de Labels**  
+   O fluxo compara a categoria sugerida com as labels existentes no Gmail:
+    - Se a label já existir → segue
+    - Se não existir → uma nova label é criada automaticamente
+
+5. **Aplicação da Label**  
+   A mensagem recebe sua categoria como label, mantendo a caixa de entrada sempre organizada.
+
+6. **Registro no Google Sheets**  
+   Todo processamento é gravado em uma planilha contendo:
+    - data
+    - de
+    - assunto
+    - categoria
+    - urgência
+    - resumo
+    - confiança  
+      Esse registro funciona como um **histórico auditável** e permite dashboards externos.
+
+O resultado é um sistema autônomo capaz de organizar e priorizar sua caixa de entrada de forma inteligente e consistente.
+
+---
+
+### 🧾 JSON Exportado
+[Email Classifier & Prioritizer Workflow.json](workflows/Email%20Classifier%20%26%20Prioritizer%20Workflow.json)
+
 ---
 ## 📎 Contato
-
 Se quiser discutir automação com IA, desenho de Workflow ou projetos n8n:
 
 **gestevao04@gmail.com**  
